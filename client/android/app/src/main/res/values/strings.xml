@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">SIH IDEA1</string>
+    <string name="title_activity_main">SIH IDEA1</string>
+    <string name="package_name">com.sih.idea1</string>
+    <string name="custom_url_scheme">com.sih.idea1</string>
+</resources>
