@@ -28,7 +28,7 @@ app.get("/", (req, res) => {
   res.send("MediTrack API is running");
 });
 
-// Test route
+// Test routed
 app.get("/api/hello", (req, res) => {
   res.json({ msg: "API working!" });
 });
