@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import AlertCard from '../components/AlertCard';
 import MedicineBox from '../components/MedicineBox';
+import { API_URL } from '../api';
 
 const Alert = () => {
   const location = useLocation();
@@ -14,7 +15,7 @@ const Alert = () => {
   // Fetch medicines
   const fetchMeds = async () => {
     const token = localStorage.getItem('token');
-    const res = await fetch('http://localhost:5000/api/meds', {
+    const res = await fetch(`${API_URL}/meds`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     const data = await res.json();
@@ -24,7 +25,7 @@ const Alert = () => {
   // Fetch alert stats
   const fetchStats = async () => {
     const token = localStorage.getItem('token');
-    const res = await fetch('http://localhost:5000/api/alerts/history', {
+    const res = await fetch(`${API_URL}/alerts/history`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     const data = await res.json();
@@ -41,7 +42,7 @@ const Alert = () => {
 
   const handleAction = async (action) => {
     const token = localStorage.getItem('token');
-    await fetch(`http://localhost:5000/api/alerts/${action}`, {
+    await fetch(`${API_URL}/alerts/${action}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
       body: JSON.stringify({ alertId }),

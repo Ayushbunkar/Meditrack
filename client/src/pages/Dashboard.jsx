@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import MedicineBox from '../components/MedicineBox';
 import AddMedicineModal from '../components/AddMedicineModal';
 import { format } from 'date-fns';
+import { API_URL } from '../api';
 
 const Dashboard = () => {
   const [meds, setMeds] = useState([]);
@@ -15,7 +16,7 @@ const Dashboard = () => {
   // Fetch medicines
   const fetchMeds = async () => {
     const token = localStorage.getItem('token');
-    const res = await fetch('http://localhost:5000/api/meds', {
+    const res = await fetch(`${API_URL}/meds`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     const data = await res.json();
@@ -25,7 +26,7 @@ const Dashboard = () => {
   // Fetch alert stats
   const fetchStats = async () => {
     const token = localStorage.getItem('token');
-    const res = await fetch('http://localhost:5000/api/alerts/history', {
+    const res = await fetch(`${API_URL}/alerts/history`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     const data = await res.json();
@@ -37,7 +38,7 @@ const Dashboard = () => {
   // Fetch alert history
   const fetchAlerts = async () => {
     const token = localStorage.getItem('token');
-    const res = await fetch('http://localhost:5000/api/alerts/history', {
+    const res = await fetch(`${API_URL}/alerts/history`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     const data = await res.json();
@@ -52,7 +53,7 @@ const Dashboard = () => {
 
   const handleAdd = async (med) => {
     const token = localStorage.getItem('token');
-    await fetch('http://localhost:5000/api/meds', {
+    await fetch(`${API_URL}/meds`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
       body: JSON.stringify(med),
@@ -64,7 +65,7 @@ const Dashboard = () => {
   // Handle checkbox toggle
   const handleStatusChange = async (alertId, checked) => {
     const token = localStorage.getItem('token');
-    await fetch(`http://localhost:5000/api/alerts/${checked ? 'taken' : 'missed'}`, {
+    await fetch(`${API_URL}/alerts/${checked ? 'taken' : 'missed'}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
       body: JSON.stringify({ alertId }),

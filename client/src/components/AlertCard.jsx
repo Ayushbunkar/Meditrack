@@ -1,10 +1,11 @@
 import React from 'react';
 import { motion } from 'framer-motion';
+import { API_URL } from '../api';
 
 const AlertCard = ({ medicine, alertId, onTaken, onMissed }) => {
   const handleTaken = async () => {
     const token = localStorage.getItem('token');
-    await fetch('http://localhost:5000/api/alerts/taken', {
+    await fetch(`${API_URL}/alerts/taken`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -17,7 +18,7 @@ const AlertCard = ({ medicine, alertId, onTaken, onMissed }) => {
 
   const handleMissed = async () => {
     const token = localStorage.getItem('token');
-    await fetch('http://localhost:5000/api/alerts/missed', {
+    await fetch(`${API_URL}/alerts/missed`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

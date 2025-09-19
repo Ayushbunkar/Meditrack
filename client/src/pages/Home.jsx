@@ -5,6 +5,7 @@ import AddMedicineModal from '../components/AddMedicineModal';
 import AlertCard from '../components/AlertCard';
 import { useNavigate } from 'react-router-dom';
 import doctorImg from '../assets/meditrek.jpg'; // doctor image
+import { API_URL } from '../api';
 
 const Home = () => {
   const [meds, setMeds] = useState([]);
@@ -18,7 +19,7 @@ const Home = () => {
   // Fetch medicines
   const fetchMeds = async () => {
     const token = localStorage.getItem('token');
-    const res = await fetch('http://localhost:5000/api/meds', {
+    const res = await fetch(`${API_URL}/meds`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     const data = await res.json();
@@ -28,7 +29,7 @@ const Home = () => {
   // Fetch alert stats
   const fetchStats = async () => {
     const token = localStorage.getItem('token');
-    const res = await fetch('http://localhost:5000/api/alerts/history', {
+    const res = await fetch(`${API_URL}/alerts/history`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     const data = await res.json();
@@ -48,7 +49,7 @@ const Home = () => {
       const found = meds.find(m => m.time === current);
       if (found) {
         const token = localStorage.getItem('token');
-        fetch('http://localhost:5000/api/alerts/trigger', {
+        fetch(`${API_URL}/alerts/trigger`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
           body: JSON.stringify({ medicineId: found._id, time: current }),
@@ -68,7 +69,7 @@ const Home = () => {
   // Add new medicine
   const handleAdd = async (med) => {
     const token = localStorage.getItem('token');
-    await fetch('http://localhost:5000/api/meds', {
+    await fetch(`${API_URL}/meds`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
       body: JSON.stringify(med),
