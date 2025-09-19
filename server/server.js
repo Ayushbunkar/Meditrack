@@ -11,8 +11,8 @@ const authRoutes = require('./routes/auth');
 const medsRoutes = require('./routes/meds');
 const alertRoutes = require('./routes/alertRoutes');
 
-// Import DeviceData model
-const { DeviceData } = require('./db');
+// Import DeviceData and MeditrackLog models
+const { DeviceData, MeditrackLog } = require('./db');
 
 const app = express();
 
@@ -40,6 +40,20 @@ app.post('/api/device/data', async (req, res) => {
     res.json({ status: 'success', saved });
   } catch (err) {
     res.status(500).json({ error: 'Failed to save data' });
+  }
+});
+
+// Example endpoint to log a dose event (ensure user_email is provided)
+app.post('/api/meds/log', async (req, res) => {
+  try {
+    // You may want to fetch user_email from your user DB based on device_id or user session
+    const user_email = req.body.user_email; // Or fetch from user DB/session
+    const log = await MeditrackLog.create(req.body);
+    // Notify if missed (pass user_email)
+    await MeditrackLog.notifyIfMissed(log, user_email);
+    res.json({ status: 'success', log });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to log event' });
   }
 });
 

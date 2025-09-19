@@ -1,6 +1,7 @@
 // server/db.js
 
 const mongoose = require('mongoose');
+const path = require('path');
 
 const mongoUri = process.env.MONGODB_URI || process.env.MONGO_URI;
 const MAX_DB_RETRIES = 5;
@@ -34,12 +35,34 @@ mongoose.connection.on('disconnected', () => console.warn('⚠️ MongoDB discon
 mongoose.connection.on('reconnected', () => console.log('🔄 MongoDB reconnected'));
 mongoose.connection.on('error', (err) => console.error('❌ MongoDB error:', err.message));
 
+// Import dotenv to load environment variables if not already loaded
+require('dotenv').config();
+
 // Import models
-const MeditrackLog = require('./models/meditrackLogSchema');
-const DeviceData = require('./models/deviceDataSchema'); // Now this file exists
+const MeditrackLog = require(path.join(__dirname, 'models', 'meditrackLogSchema'));
+const DeviceData = require(path.join(__dirname, 'models', 'deviceDataSchema')); // Now this file exists
 
 module.exports = {
   connectDB,
   DeviceData,
   MeditrackLog
 };
+
+// Test dummy entry if run directly (node db.js)
+if (require.main === module) {
+  (async () => {
+    await connectDB();
+    try {
+      await DeviceData.create({
+        temperature: 25.5,
+        humidity: 60,
+        timestamp: new Date()
+      });
+      // Removed terminal log for successful dummy save
+    } catch (err) {
+      console.error('❌ Error saving dummy DeviceData:', err.message);
+    } finally {
+      mongoose.disconnect();
+    }
+  })();
+}
