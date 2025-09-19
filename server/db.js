@@ -34,4 +34,12 @@ mongoose.connection.on('disconnected', () => console.warn('⚠️ MongoDB discon
 mongoose.connection.on('reconnected', () => console.log('🔄 MongoDB reconnected'));
 mongoose.connection.on('error', (err) => console.error('❌ MongoDB error:', err.message));
 
-module.exports = connectDB;
+// Import models
+const MeditrackLog = require('./models/meditrackLogSchema');
+const DeviceData = require('./models/deviceDataSchema'); // Now this file exists
+
+module.exports = {
+  connectDB,
+  DeviceData,
+  MeditrackLog
+};

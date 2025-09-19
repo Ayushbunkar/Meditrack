@@ -11,6 +11,9 @@ const authRoutes = require('./routes/auth');
 const medsRoutes = require('./routes/meds');
 const alertRoutes = require('./routes/alertRoutes');
 
+// Import DeviceData model
+const { DeviceData } = require('./db');
+
 const app = express();
 
 // Trust proxy for deployments behind reverse proxies (Render/Railway)
@@ -28,6 +31,17 @@ app.use(express.json());
 app.use('/api/auth', authRoutes);
 app.use('/api/meds', medsRoutes);
 app.use('/api/alerts', alertRoutes);
+
+// Endpoint for ESP32 to send data to MongoDB
+app.post('/api/device/data', async (req, res) => {
+  try {
+    // Save req.body to MongoDB
+    const saved = await DeviceData.create(req.body);
+    res.json({ status: 'success', saved });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to save data' });
+  }
+});
 
 // Health check route
 app.get('/api/hello', (req, res) => {
