@@ -7,6 +7,7 @@ const Register = () => {
   const [form, setForm] = useState({ name: '', email: '', password: '', confirm: '' });
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [loading, setLoading] = useState(false); // add loading state
   const navigate = useNavigate();
 
   const handleChange = e => {
@@ -15,30 +16,82 @@ const Register = () => {
     setSuccess('');
   };
 
+  // Prefer Vite's boolean: true in production builds
+  const isProd = import.meta.env.PROD;
+  // Normalize base: remove trailing slashes and any trailing /api if mistakenly provided
+  const RAW_BASE = (API_URL || 'https://meditrack-3.onrender.com');
+  const API_BASE = RAW_BASE.replace(/\/+$/, '').replace(/\/api$/, '');
+  const api = (path) => (isProd ? `${API_BASE}/api${path}` : `/api${path}`);
+
+  // Simple email validator
+  const isValidEmail = (val) =>
+    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val);
+
   const handleSubmit = async e => {
     e.preventDefault();
     setError('');
     setSuccess('');
-    if (!form.name || !form.email || !form.password || !form.confirm) {
+
+    // Normalize inputs
+    const name = form.name.trim();
+    const email = form.email.trim().toLowerCase();
+    const password = form.password;
+    const confirm = form.confirm;
+
+    if (!name || !email || !password || !confirm) {
       setError('All fields are required');
       return;
     }
-    if (form.password !== form.confirm) {
+    if (!isValidEmail(email)) {
+      setError('Please enter a valid email address');
+      return;
+    }
+    if (password.length < 6) {
+      setError('Password must be at least 6 characters');
+      return;
+    }
+    if (password !== confirm) {
       setError('Passwords do not match');
       return;
     }
+
+    // Abort after 12s to avoid hanging in production
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 12000);
+
     try {
-      const res = await fetch(`${API_URL}/auth/register`, {
+      setLoading(true);
+      const url = api('/auth/register');
+      const res = await fetch(url, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: form.name, email: form.email, password: form.password }),
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        body: JSON.stringify({ name, email, password }),
+        signal: controller.signal
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || 'Registration failed');
+
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        if (res.status === 409) {
+          throw new Error(data?.message || 'Email already registered');
+        }
+        throw new Error(data?.message || 'Registration failed');
+      }
+
       setSuccess('Registration successful!');
       setTimeout(() => navigate('/login'), 1200);
     } catch (err) {
-      setError(err.message);
+      // AbortError has name 'AbortError'
+      const msg =
+        err?.name === 'AbortError'
+          ? 'Request timed out. Please try again.'
+          : err?.message === 'Failed to fetch'
+            ? 'Could not connect to server. Check your network or CORS settings.'
+            : err?.message || 'Something went wrong.';
+      setError(msg);
+    } finally {
+      clearTimeout(timeoutId);
+      setLoading(false);
     }
   };
 
@@ -60,6 +113,8 @@ const Register = () => {
             placeholder="Name"
             value={form.name}
             onChange={handleChange}
+            required
+            autoComplete="name"
             className="w-full px-4 py-2 bg-[#0f0f10] border border-neutral-700 rounded-lg text-[#e5e5e5] placeholder-[#6b7280] focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition"
           />
         </div>
@@ -71,6 +126,8 @@ const Register = () => {
             placeholder="Email"
             value={form.email}
             onChange={handleChange}
+            required
+            autoComplete="email"
             className="w-full px-4 py-2 bg-[#0f0f10] border border-neutral-700 rounded-lg text-[#e5e5e5] placeholder-[#6b7280] focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition"
           />
         </div>
@@ -82,7 +139,10 @@ const Register = () => {
             placeholder="Password"
             value={form.password}
             onChange={handleChange}
-            className="w-full px-4 py-2 bg-[#0f0f10] border border-neutral-700 rounded-lg text-[#e5e5e5] placeholder-[#6b7280] focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition"
+            required
+            minLength={6}
+            autoComplete="new-password"
+            className="w-full px-4 py-2 bg-[#0f0f10] border border-neutral-700 rounded-lg text-[#e5e5e5] placeholder-[#6b7280] focus:outline-none focus:ring-2 focus:ring-indigo-500 focus;border-indigo-500 transition"
           />
         </div>
         <div className="mb-4">
@@ -93,6 +153,9 @@ const Register = () => {
             placeholder="Confirm Password"
             value={form.confirm}
             onChange={handleChange}
+            required
+            minLength={6}
+            autoComplete="new-password"
             className="w-full px-4 py-2 bg-[#0f0f10] border border-neutral-700 rounded-lg text-[#e5e5e5] placeholder-[#6b7280] focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition"
           />
         </div>
@@ -110,8 +173,9 @@ const Register = () => {
           whileHover={{ scale: 1.05 }}
           type="submit"
           className="w-full py-2 mt-2 rounded-xl font-semibold shadow-lg bg-gradient-to-r from-[#6366f1] to-[#4f46e5] hover:from-[#818cf8] hover:to-[#6366f1] text-white transition"
+          disabled={loading}
         >
-          Register
+          {loading ? 'Registering...' : 'Register'}
         </motion.button>
         <div className="mt-4 text-center">
           <span className="text-[#a1a1aa]">Already have an account? </span>

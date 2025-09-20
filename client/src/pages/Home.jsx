@@ -7,6 +7,16 @@ import { useNavigate } from 'react-router-dom';
 import doctorImg from '../assets/meditrek.jpg'; // doctor image
 import { API_URL } from '../api';
 
+// Use Vite proxy in dev; normalize base in prod
+const isDev =
+  window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+const API_BASE = (API_URL || 'https://meditrack-3.onrender.com').replace(/\/+$/, '');
+const api = (path) => (isDev ? `/api${path}` : `${API_BASE}/api${path}`);
+const authHeaders = () => {
+  const token = localStorage.getItem('token');
+  return token ? { Authorization: `Bearer ${token}` } : {};
+};
+
 const Home = () => {
   const [meds, setMeds] = useState([]);
   const [showModal, setShowModal] = useState(false);
@@ -18,24 +28,38 @@ const Home = () => {
 
   // Fetch medicines
   const fetchMeds = async () => {
-    const token = localStorage.getItem('token');
-    const res = await fetch(`${API_URL}/meds`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    const data = await res.json();
-    setMeds(data);
+    try {
+      const res = await fetch(api('/meds'), {
+        headers: {
+          ...authHeaders(),
+        },
+      });
+      if (res.status === 401) throw new Error('Unauthorized');
+      if (!res.ok) throw new Error('Failed to load meds');
+      const data = await res.json();
+      setMeds(data);
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   // Fetch alert stats
   const fetchStats = async () => {
-    const token = localStorage.getItem('token');
-    const res = await fetch(`${API_URL}/alerts/history`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    const data = await res.json();
-    const taken = data.filter(a => a.status === 'taken').length;
-    const missed = data.filter(a => a.status === 'missed').length;
-    setStats({ taken, missed });
+    try {
+      const res = await fetch(api('/alerts/history'), {
+        headers: {
+          ...authHeaders(),
+        },
+      });
+      if (res.status === 401) throw new Error('Unauthorized');
+      if (!res.ok) throw new Error('Failed to load stats');
+      const data = await res.json();
+      const taken = data.filter(a => a.status === 'taken').length;
+      const missed = data.filter(a => a.status === 'missed').length;
+      setStats({ taken, missed });
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   // Medicine alerts every minute
@@ -69,7 +93,7 @@ const Home = () => {
   // Add new medicine
   const handleAdd = async (med) => {
     const token = localStorage.getItem('token');
-    await fetch(`${API_URL}/meds`, {
+    await fetch(api('/meds'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
       body: JSON.stringify(med),

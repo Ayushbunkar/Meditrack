@@ -21,9 +21,24 @@ if (process.env.NODE_ENV === "production") {
   app.set('trust proxy', 1);
 }
 
-// Use CORS with env variable for production, fallback to '*' for dev
-const allowedOrigin = process.env.FRONTEND_URL || '*';
-app.use(cors({ origin: allowedOrigin }));
+// CORS: allow prod + localhost; handle preflight + credentials
+const allowedOrigins = (process.env.ALLOWED_ORIGINS || 'https://meditrack-pi.vercel.app,http://localhost:5173')
+  .split(',')
+  .map(s => s.trim());
+
+const corsOptions = {
+  origin(origin, cb) {
+    if (!origin) return cb(null, true); // non-browser or same-origin
+    if (allowedOrigins.includes(origin)) return cb(null, true);
+    return cb(new Error('Not allowed by CORS'));
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+};
+
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions)); // ensure preflight responds
 
 app.use(express.json());
 
@@ -31,6 +46,7 @@ app.use(express.json());
 app.use('/api/auth', authRoutes);
 app.use('/api/meds', medsRoutes);
 app.use('/api/alerts', alertRoutes);
+app.use('/auth', authRoutes); // Support for /auth/register endpoint
 
 // Endpoint for ESP32 to send data to MongoDB
 app.post('/api/device/data', async (req, res) => {
@@ -148,24 +164,32 @@ async function start() {
       }
     }
 
-    // Graceful shutdown
-    const shutdown = (signal) => {
-      console.log(`\n${signal} received. Shutting down gracefully...`);
-      server.close(() => {
-        mongoose.connection.close(false, () => {
-          console.log('🛑 Server and DB closed. Bye!');
-          process.exit(0);
-        });
+    // Graceful shutdown (no callback to mongoose.connection.close)
+    function closeServer(serverInstance) {
+      return new Promise((resolve, reject) => {
+        serverInstance.close(err => (err ? reject(err) : resolve()));
       });
-      setTimeout(() => {
-        console.error('Force exit after timeout.');
-        process.exit(1);
-      }, 10000).unref();
-    };
-    ['SIGINT', 'SIGTERM'].forEach(sig => process.on(sig, () => shutdown(sig)));
+    }
 
-    process.on("unhandledRejection", (reason) => {
-      console.error("Unhandled Rejection:", reason);
+    async function gracefulShutdown(signal) {
+      console.log(`${signal} received. Shutting down gracefully...`);
+      try {
+        await closeServer(server);
+        await mongoose.connection.close(); // no callback allowed in Mongoose 7+
+        console.log('✅ HTTP server closed and MongoDB disconnected');
+        process.exit(0);
+      } catch (err) {
+        console.error('❌ Error during shutdown', err);
+        process.exit(1);
+      }
+    }
+
+    process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+    process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+
+    // Optional: catch unhandled rejections so process doesn't crash silently
+    process.on('unhandledRejection', (reason) => {
+      console.error('Unhandled Rejection:', reason);
     });
   } catch (err) {
     console.error("❌ Startup error:", err.message);

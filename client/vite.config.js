@@ -31,5 +31,14 @@ export default defineConfig({
         ]
       }
     })
-  ]
+  ],
+  server: {
+    proxy: {
+      '/api': {
+        target: process.env.VITE_PROXY_TARGET || 'https://meditrack-3.onrender.com',
+        changeOrigin: true,
+        secure: false,
+      },
+    },
+  },
 });

@@ -5,6 +5,15 @@ import AddMedicineModal from '../components/AddMedicineModal';
 import { format } from 'date-fns';
 import { API_URL } from '../api';
 
+// Build API URL: use Vite proxy in dev; normalize base in prod
+const isDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+const API_BASE = (API_URL || 'https://meditrack-3.onrender.com').replace(/\/+$/, '');
+const api = (path) => (isDev ? `/api${path}` : `${API_BASE}/api${path}`);
+const authHeaders = () => {
+  const token = localStorage.getItem('token');
+  return token ? { Authorization: `Bearer ${token}` } : {};
+};
+
 const Dashboard = () => {
   const [meds, setMeds] = useState([]);
   const [showModal, setShowModal] = useState(false);
@@ -15,34 +24,59 @@ const Dashboard = () => {
 
   // Fetch medicines
   const fetchMeds = async () => {
-    const token = localStorage.getItem('token');
-    const res = await fetch(`${API_URL}/meds`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    const data = await res.json();
-    setMeds(data);
+    try {
+      const res = await fetch(api('/meds'), {
+        headers: {
+          ...authHeaders(),
+        },
+      });
+      if (res.status === 401) {
+        // optional: redirect to login
+        // navigate('/login');
+        throw new Error('Unauthorized');
+      }
+      if (!res.ok) throw new Error('Failed to load meds');
+      const data = await res.json();
+      setMeds(data);
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   // Fetch alert stats
   const fetchStats = async () => {
-    const token = localStorage.getItem('token');
-    const res = await fetch(`${API_URL}/alerts/history`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    const data = await res.json();
-    const taken = data.filter(a => a.status === 'taken').length;
-    const missed = data.filter(a => a.status === 'missed').length;
-    setStats({ taken, missed });
+    try {
+      const res = await fetch(api('/alerts/history'), {
+        headers: {
+          ...authHeaders(),
+        },
+      });
+      if (res.status === 401) throw new Error('Unauthorized');
+      if (!res.ok) throw new Error('Failed to load stats');
+      const data = await res.json();
+      const taken = data.filter(a => a.status === 'taken').length;
+      const missed = data.filter(a => a.status === 'missed').length;
+      setStats({ taken, missed });
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   // Fetch alert history
   const fetchAlerts = async () => {
-    const token = localStorage.getItem('token');
-    const res = await fetch(`${API_URL}/alerts/history`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    const data = await res.json();
-    setAlerts(data);
+    try {
+      const res = await fetch(api('/alerts/history'), {
+        headers: {
+          ...authHeaders(),
+        },
+      });
+      if (res.status === 401) throw new Error('Unauthorized');
+      if (!res.ok) throw new Error('Failed to load alerts');
+      const data = await res.json();
+      setAlerts(data);
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   useEffect(() => {
@@ -51,15 +85,25 @@ const Dashboard = () => {
     fetchAlerts();
   }, []);
 
-  const handleAdd = async (med) => {
-    const token = localStorage.getItem('token');
-    await fetch(`${API_URL}/meds`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body: JSON.stringify(med),
-    });
-    setShowModal(false);
-    fetchMeds();
+  // Called by AddMedicineModal on submit
+  const handleAdd = async (newMedicine) => {
+    try {
+      const res = await fetch(api('/meds'), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...authHeaders(),
+        },
+        body: JSON.stringify(newMedicine),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.status === 401) throw new Error('Unauthorized');
+      if (!res.ok) throw new Error(data?.message || 'Failed to add medicine');
+      setShowModal(false);
+      fetchMeds();
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   // Handle checkbox toggle
