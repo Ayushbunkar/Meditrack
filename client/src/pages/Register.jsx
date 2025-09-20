@@ -78,7 +78,8 @@ const Register = () => {
         throw new Error(data?.message || 'Registration failed');
       }
 
-      setSuccess('Registration successful!');
+      setSuccess('Account created. Redirecting to login...');
+      setForm({ name: '', email: '', password: '', confirm: '' }); // clear form
       setTimeout(() => navigate('/login'), 1200);
     } catch (err) {
       // AbortError has name 'AbortError'
@@ -142,7 +143,7 @@ const Register = () => {
             required
             minLength={6}
             autoComplete="new-password"
-            className="w-full px-4 py-2 bg-[#0f0f10] border border-neutral-700 rounded-lg text-[#e5e5e5] placeholder-[#6b7280] focus:outline-none focus:ring-2 focus:ring-indigo-500 focus;border-indigo-500 transition"
+            className="w-full px-4 py-2 bg-[#0f0f10] border border-neutral-700 rounded-lg text-[#e5e5e5] placeholder-[#6b7280] focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition"
           />
         </div>
         <div className="mb-4">
@@ -160,12 +161,24 @@ const Register = () => {
           />
         </div>
         {error && (
-          <motion.div initial={{ scale: 0.8 }} animate={{ scale: 1 }} className="mb-4 text-red-500 text-center">
+          <motion.div
+            initial={{ scale: 0.8 }}
+            animate={{ scale: 1 }}
+            className="mb-4 text-red-500 text-center"
+            role="alert"
+            aria-live="assertive"
+          >
             {error}
           </motion.div>
         )}
         {success && (
-          <motion.div initial={{ scale: 0.8 }} animate={{ scale: 1 }} className="mb-4 text-indigo-400 text-center">
+          <motion.div
+            initial={{ scale: 0.8 }}
+            animate={{ scale: 1 }}
+            className="mb-4 text-indigo-400 text-center"
+            role="status"
+            aria-live="polite"
+          >
             {success}
           </motion.div>
         )}

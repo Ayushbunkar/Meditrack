@@ -10,34 +10,50 @@ const Login = () => {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
+  // Production-safe API builder
+  const isProd = import.meta.env.PROD;
+  const RAW_BASE = API_URL || "https://meditrack-3.onrender.com";
+  const API_BASE = RAW_BASE.replace(/\/+$/, "").replace(/\/api$/, "");
+  const api = (path) => (isProd ? `${API_BASE}/api${path}` : `/api${path}`);
+
+  const isValidEmail = (val) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
 
-    if (!email || !password) {
+    const emailNorm = (email || "").trim().toLowerCase();
+    const passwordNorm = (password || "").trim();
+
+    if (!emailNorm || !passwordNorm) {
       setError("All fields are required");
       return;
     }
+    if (!isValidEmail(emailNorm)) {
+      setError("Please enter a valid email address");
+      return;
+    }
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 12000);
 
     try {
       setLoading(true);
 
-      // Use relative URL in dev to leverage Vite proxy; normalize base in prod
-      const isDev =
-        window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
-      const base = (API_URL || "https://meditrack-3.onrender.com").replace(/\/+$/, "");
-      const url = isDev ? "/api/auth/login" : `${base}/api/auth/login`;
-
+      const url = api("/auth/login");
       const res = await fetch(url, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        // credentials: "include", // enable only if your API uses cookies and CORS is configured
-        body: JSON.stringify({ email, password }),
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify({ email: emailNorm, password: passwordNorm }),
+        signal: controller.signal,
       });
 
       const data = await res.json().catch(() => ({}));
 
       if (!res.ok) {
+        if (res.status === 401) {
+          throw new Error(data?.message || "Invalid email or password.");
+        }
         throw new Error(data?.message || "Login failed");
       }
 
@@ -47,12 +63,15 @@ const Login = () => {
 
       navigate("/"); // redirect to home/dashboard
     } catch (err) {
-      setError(
-        err?.message === "Failed to fetch"
-          ? "Could not connect to server. Check your network or CORS settings."
-          : err?.message || "Login failed"
-      );
+      const msg =
+        err?.name === "AbortError"
+          ? "Request timed out. Please try again."
+          : err?.message === "Failed to fetch"
+            ? "Could not connect to server. Check your network or CORS settings."
+            : err?.message || "Login failed";
+      setError(msg);
     } finally {
+      clearTimeout(timeoutId);
       setLoading(false);
     }
   };
@@ -77,6 +96,8 @@ const Login = () => {
             placeholder="Email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
+            required
+            autoComplete="email"
             className="w-full px-4 py-2 bg-[#0f0f10] border border-neutral-700 rounded-lg text-[#e5e5e5] placeholder-[#6b7280] focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition"
           />
         </div>
@@ -88,6 +109,9 @@ const Login = () => {
             placeholder="Password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
+            required
+            minLength={6}
+            autoComplete="current-password"
             className="w-full px-4 py-2 bg-[#0f0f10] border border-neutral-700 rounded-lg text-[#e5e5e5] placeholder-[#6b7280] focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition"
           />
         </div>

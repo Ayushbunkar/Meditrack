@@ -4,19 +4,39 @@ import { motion } from 'framer-motion';
 const AddMedicineModal = ({ onClose, onAdd }) => {
   const [form, setForm] = useState({ name: '', time: '', dosage: '' });
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false); // prevent double submit and show progress
 
   const handleChange = e => {
     setForm({ ...form, [e.target.name]: e.target.value });
     setError('');
   };
 
-  const handleSubmit = e => {
+  const handleSubmit = async e => {
     e.preventDefault();
-    if (!form.name || !form.time || !form.dosage) {
+    const name = (form.name || '').trim();
+    const dosage = (form.dosage || '').trim();
+    const time = form.time || '';
+
+    if (!name || !time || !dosage) {
       setError('All fields are required');
       return;
     }
-    onAdd(form);
+    if (name.length < 2) {
+      setError('Name must be at least 2 characters');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const maybePromise = onAdd({ name, time, dosage });
+      if (maybePromise && typeof maybePromise.then === 'function') {
+        await maybePromise; // support async onAdd
+      }
+    } catch (err) {
+      setError(err?.message || 'Failed to add medicine');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -24,7 +44,7 @@ const AddMedicineModal = ({ onClose, onAdd }) => {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-  className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-60"
+      className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-60"
     >
       <motion.form
         initial={{ scale: 0.8 }}
@@ -42,6 +62,8 @@ const AddMedicineModal = ({ onClose, onAdd }) => {
             placeholder="Medicine Name"
             value={form.name}
             onChange={handleChange}
+            required
+            autoComplete="off"
             className="w-full px-3 py-2 border border-neutral-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-400 bg-[#18181b] text-[#e5e5e5]"
           />
         </div>
@@ -51,6 +73,7 @@ const AddMedicineModal = ({ onClose, onAdd }) => {
             name="time"
             value={form.time}
             onChange={handleChange}
+            required
             className="w-full px-3 py-2 border border-neutral-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-400 bg-[#18181b] text-[#e5e5e5]"
           />
         </div>
@@ -61,23 +84,31 @@ const AddMedicineModal = ({ onClose, onAdd }) => {
             placeholder="Dosage (e.g. 1 tablet)"
             value={form.dosage}
             onChange={handleChange}
+            required
+            autoComplete="off"
             className="w-full px-3 py-2 border border-neutral-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-400 bg-[#18181b] text-[#e5e5e5]"
           />
         </div>
-        {error && <div className="mb-2 text-red-500 text-center">{error}</div>}
+        {error && (
+          <div className="mb-2 text-red-500 text-center" role="alert" aria-live="assertive">
+            {error}
+          </div>
+        )}
         <div className="flex justify-between mt-4">
           <button
             type="button"
-            className="px-4 py-2 bg-[#23272f] text-[#e5e5e5] rounded-lg hover:bg-[#18181b] transition-colors duration-150 border border-neutral-800"
+            className="px-4 py-2 bg-[#23272f] text-[#e5e5e5] rounded-lg hover:bg-[#18181b] transition-colors duration-150 border border-neutral-800 disabled:opacity-50 disabled:cursor-not-allowed"
             onClick={onClose}
+            disabled={loading}
           >
             Cancel
           </button>
           <button
             type="submit"
-            className="px-4 py-2 bg-gradient-to-r from-[#6366f1] to-[#4f46e5] text-white rounded-lg font-semibold hover:from-[#818cf8] hover:to-[#6366f1] transition-colors duration-150 shadow"
+            className="px-4 py-2 bg-gradient-to-r from-[#6366f1] to-[#4f46e5] text-white rounded-lg font-semibold hover:from-[#818cf8] hover:to-[#6366f1] transition-colors duration-150 shadow disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={loading}
           >
-            Add
+            {loading ? 'Adding...' : 'Add'}
           </button>
         </div>
       </motion.form>
